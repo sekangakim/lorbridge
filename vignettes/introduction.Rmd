@@ -1,0 +1,172 @@
+---
+title: "Introduction to lorbridge: Bridging Log-Odds Ratios and Correspondence Analysis"
+author: "Se-Kang Kim, Ph.D."
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to lorbridge}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width  = 7,
+  fig.height = 5
+)
+```
+
+## Why lorbridge?
+
+Clinical and medical researchers routinely report **odds ratios (ORs)** from
+logistic regression as their primary measure of association. An OR of 1.83, for
+example, means the odds of the outcome are 83% higher for a one-unit increase
+in the predictor — a statement that requires statistical training to interpret
+intuitively.
+
+**lorbridge** provides a formal mathematical bridge (Kim & Grochowalski, 2019)
+that re-expresses log-odds ratios (LORs) as **cosine theta** — a metric bounded
+between −1 and +1, immediately interpretable like a Pearson correlation. At the
+same time, the package extends this bridge into singly-ordered (SONSCA) and
+doubly-ordered (DONSCA) nonsymmetric correspondence analysis, giving researchers
+visual geometric maps alongside their regression results.
+
+---
+
+## Dataset
+
+The package includes `lorbridge_data`, an individual-level dataset (N = 900)
+with Vocabulary Meaning (VM) scores and binary minority/majority group
+membership:
+
+```{r data}
+library(lorbridge)
+data(lorbridge_data)
+str(lorbridge_data)
+```
+
+---
+
+## Subprogram 1: Binary Logistic Regression
+
+### 1a. Continuous predictor (VM per 1 SD)
+
+```{r blr_continuous}
+res_1a <- blr_continuous(
+  outcome   = lorbridge_data$minority,
+  predictor = lorbridge_data$VM
+)
+print(res_1a$summary_table[, c("LOR","OR","OR_lo","OR_hi","p",
+                                "Nagelkerke_R2","YuleQ","r_meta")],
+      digits = 4)
+```
+
+**Plain-English interpretation:** A one-standard-deviation increase in VM
+score is associated with an OR of approximately 0.65 for minority membership.
+The LOR of −0.43 translates to an r_meta of approximately −0.12 on the
+familiar −1 to +1 scale — a small but statistically reliable negative
+association.
+
+---
+
+### 1b. Categorical predictor (VM bins, VM4 as reference)
+
+```{r blr_categorical}
+res_1b <- blr_categorical(
+  outcome   = lorbridge_data$minority,
+  predictor = lorbridge_data$VMbin,
+  ref_level = "VM4"
+)
+print(res_1b$results[, c("Category","LOR","OR","p","YuleQ","r_meta","cos_theta")],
+      digits = 4)
+```
+
+**Note:** In a 2-row table, the 1D correspondence analysis solution yields
+cosine thetas of exactly ±1. The **sign** carries the substantive information:
+positive = minority over-represented relative to VM4; negative = under-represented.
+
+---
+
+## Subprogram 2: SONSCA
+
+Singly-Ordered Nonsymmetric Correspondence Analysis is applied to the
+IQ-by-race and VM-by-race contingency tables, with Race2 and VM4 (or IQ4)
+as the row and column anchors respectively.
+
+```{r sonsca_setup}
+data(tab_IQ)
+row_anchor <- "Race2"
+col_anchor <- "IQ4"
+races      <- setdiff(rownames(tab_IQ), row_anchor)
+bins       <- setdiff(colnames(tab_IQ), col_anchor)
+```
+
+```{r sonsca_ccms}
+# Pairwise CCMs for Race1 vs Race2 at IQ1 vs IQ4
+sonsca_ccm(tab_IQ, row_k = "Race1", bin_j = "IQ1",
+           row_anchor = row_anchor, col_anchor = col_anchor)
+```
+
+```{r sonsca_cosines}
+# SONSCA coordinates and cosine theta matrix
+sc  <- sonsca_coords(tab_IQ)
+cos <- sonsca_cosines(sc$F, sc$G,
+                      row_anchor = row_anchor,
+                      col_anchor = col_anchor)
+round(cos[races, bins], 3)
+```
+
+```{r inertia}
+pct <- inertia_pct(tab_IQ)
+cat(sprintf("Dimension 1: %.1f%%  |  Dimension 2: %.1f%%\n", pct[1], pct[2]))
+```
+
+---
+
+## Subprogram 3: DONSCA
+
+Doubly-Ordered Nonsymmetric Correspondence Analysis is applied to the 6 × 6
+IQ × VM table, with IQ4 and VM4 as the row and column anchors.
+
+```{r donsca}
+data(tab_IQ_VM)
+fit <- donsca_fit(tab_IQ_VM)
+cos_d <- donsca_cosines(fit, col_anchor_idx = 4, row_anchor_idx = 4)
+head(cos_d, 6)
+```
+
+### Multinomial logistic regression with CCMs
+
+```{r mlr_ccm, message = FALSE}
+data(lorbridge_data)  # use VM as numeric predictor, VMbin as outcome proxy
+# Illustrative: treat VM bins as the outcome and VM numeric as predictor
+# (In practice use IQ bins as outcome and VM as predictor per the paper)
+data(tab_IQ_VM)
+
+# Build long-format data from tab_IQ_VM for multinomial logit
+vm_vals <- c(54,59,62,63,65,67,69,71,73,74,76,78,80,81,82,84,85,86,87,89,
+             90,92,93,95,96,98,100,101,103,104,105,107,108,110,112,113,
+             115,117,119,121,123,125,126,128,130,132,134,136,138,139,
+             143,147,149)
+rows6 <- paste0("IQ", 1:6)
+# (Full X_wide matrix omitted here for brevity — see unified analysis script)
+```
+
+---
+
+## Key References
+
+Kim, S.-K., & Grochowalski, J. H. (2019). Gaining from discretization of
+continuous data: The correspondence analysis biplot approach.
+*Behavior Research Methods*, 51(2), 589–601.
+https://doi.org/10.3758/s13428-018-1161-1
+
+Kim, S.-K. (2020). Test treatment effect differences in repeatedly measured
+symptoms with binary values: The matched correspondence analysis approach.
+*Behavior Research Methods*, 52, 1480–1490.
+
+Kim, S.-K. (2024). Factorization of person response profiles to identify
+summative profiles carrying central response patterns.
+*Psychological Methods*, 29(4), 723–730.

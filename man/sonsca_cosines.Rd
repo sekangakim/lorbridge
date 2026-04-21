@@ -4,12 +4,12 @@
 \alias{sonsca_cosines}
 \title{Doubly-Anchored Cosine Theta for SONSCA}
 \usage{
-sonsca_cosines(F, G, row_anchor, col_anchor)
+sonsca_cosines(row_coords, col_coords, row_anchor, col_anchor)
 }
 \arguments{
-\item{F}{Row coordinate matrix (from \code{sonsca_coords()}).}
+\item{row_coords}{Row coordinate matrix (from \code{sonsca_coords()}).}
 
-\item{G}{Column coordinate matrix (from \code{sonsca_coords()}).}
+\item{col_coords}{Column coordinate matrix (from \code{sonsca_coords()}).}
 
 \item{row_anchor}{Character. Row label used as the anchor (reference).}
 

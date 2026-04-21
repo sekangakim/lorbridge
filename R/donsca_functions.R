@@ -34,26 +34,26 @@ donsca_fit <- function(tab) {
 #'
 #' @export
 donsca_cosines <- function(fit, col_anchor_idx, row_anchor_idx, dims = "all") {
-  F <- fit$Rprinccoord; G <- fit$Cstdcoord
-  if (is.null(F) || is.null(G)) stop("fit must contain Rprinccoord and Cstdcoord.")
-  K_shared <- min(ncol(F), ncol(G))
+  row_mat <- fit$Rprinccoord; col_mat <- fit$Cstdcoord
+  if (is.null(row_mat) || is.null(col_mat)) stop("fit must contain Rprinccoord and Cstdcoord.")
+  K_shared <- min(ncol(row_mat), ncol(col_mat))
   K <- if (identical(dims, "all")) K_shared else min(K_shared, as.integer(dims))
-  F <- F[, seq_len(K), drop = FALSE]; G <- G[, seq_len(K), drop = FALSE]
-  fi0 <- as.numeric(F[row_anchor_idx, , drop = FALSE])
-  gj0 <- as.numeric(G[col_anchor_idx, , drop = FALSE])
-  I <- nrow(F); J <- nrow(G)
+  row_mat <- row_mat[, seq_len(K), drop = FALSE]; col_mat <- col_mat[, seq_len(K), drop = FALSE]
+  fi0 <- as.numeric(row_mat[row_anchor_idx, , drop = FALSE])
+  gj0 <- as.numeric(col_mat[col_anchor_idx, , drop = FALSE])
+  I <- nrow(row_mat); J <- nrow(col_mat)
   out <- list(); k <- 0L
   for (i in seq_len(I)) {
     if (i == row_anchor_idx) next
-    dfi <- as.numeric(F[i, ]) - fi0
+    dfi <- as.numeric(row_mat[i, ]) - fi0
     nfi <- sqrt(sum(dfi^2)); if (nfi == 0) next
     for (j in seq_len(J)) {
       if (j == col_anchor_idx) next
-      dgj <- as.numeric(G[j, ]) - gj0
+      dgj <- as.numeric(col_mat[j, ]) - gj0
       ngj <- sqrt(sum(dgj^2)); if (ngj == 0) next
       k <- k + 1L
       out[[k]] <- data.frame(
-        Row = rownames(F)[i], Col = rownames(G)[j],
+        Row = rownames(row_mat)[i], Col = rownames(col_mat)[j],
         cos_theta = sum(dfi * dgj) / (nfi * ngj),
         stringsAsFactors = FALSE)
     }

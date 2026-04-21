@@ -112,7 +112,7 @@ sonsca_ccm(tab_IQ, row_k = "Race1", bin_j = "IQ1",
 ```{r sonsca_cosines}
 # SONSCA coordinates and cosine theta matrix
 sc  <- sonsca_coords(tab_IQ)
-cos <- sonsca_cosines(sc$F, sc$G,
+cos <- sonsca_cosines(sc$row_coords, sc$col_coords,
                       row_anchor = row_anchor,
                       col_anchor = col_anchor)
 round(cos[races, bins], 3)

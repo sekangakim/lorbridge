@@ -10,19 +10,19 @@
 #'
 #' @return A named list with elements:
 #'   \describe{
-#'     \item{F}{Row standard coordinate matrix (rows = row categories).}
-#'     \item{G}{Column principal coordinate matrix (rows = column categories).}
+#'     \item{row_coords}{Row standard coordinate matrix (rows = row categories).}
+#'     \item{col_coords}{Column principal coordinate matrix (rows = column categories).}
 #'   }
 #'
 #' @importFrom CAvariants CAvariants
 #' @export
 sonsca_coords <- function(tab) {
   s <- CAvariants(tab, catype = "SONSCA")
-  F <- as.matrix(if (!is.null(s$Rstdcoord))  s$Rstdcoord  else s$Rprinccoord)
-  G <- as.matrix(if (!is.null(s$Cprinccoord)) s$Cprinccoord else s$Cstdcoord)
-  if (is.null(rownames(F)) || any(rownames(F) == "")) rownames(F) <- rownames(tab)
-  if (is.null(rownames(G)) || any(rownames(G) == "")) rownames(G) <- colnames(tab)
-  list(F = F, G = G)
+  row_coords <- as.matrix(if (!is.null(s$Rstdcoord))  s$Rstdcoord  else s$Rprinccoord)
+  col_coords <- as.matrix(if (!is.null(s$Cprinccoord)) s$Cprinccoord else s$Cstdcoord)
+  if (is.null(rownames(row_coords)) || any(rownames(row_coords) == "")) rownames(row_coords) <- rownames(tab)
+  if (is.null(rownames(col_coords)) || any(rownames(col_coords) == "")) rownames(col_coords) <- colnames(tab)
+  list(row_coords = row_coords, col_coords = col_coords)
 }
 
 
@@ -31,8 +31,8 @@ sonsca_coords <- function(tab) {
 #' Computes the matrix of doubly-anchored cosine theta values between all
 #' non-anchor row and column pairs in SONSCA coordinate space.
 #'
-#' @param F Row coordinate matrix (from `sonsca_coords()`).
-#' @param G Column coordinate matrix (from `sonsca_coords()`).
+#' @param row_coords Row coordinate matrix (from `sonsca_coords()`).
+#' @param col_coords Column coordinate matrix (from `sonsca_coords()`).
 #' @param row_anchor Character. Row label used as the anchor (reference).
 #' @param col_anchor Character. Column label used as the anchor (reference).
 #'
@@ -41,14 +41,14 @@ sonsca_coords <- function(tab) {
 #'   columns yield `NA` (zero displacement).
 #'
 #' @export
-sonsca_cosines <- function(F, G, row_anchor, col_anchor) {
-  stopifnot(row_anchor %in% rownames(F), col_anchor %in% rownames(G))
-  F0 <- sweep(F, 2, F[row_anchor, ], "-")
-  G0 <- sweep(G, 2, G[col_anchor, ], "-")
+sonsca_cosines <- function(row_coords, col_coords, row_anchor, col_anchor) {
+  stopifnot(row_anchor %in% rownames(row_coords), col_anchor %in% rownames(col_coords))
+  F0 <- sweep(row_coords, 2, row_coords[row_anchor, ], "-")
+  G0 <- sweep(col_coords, 2, col_coords[col_anchor, ], "-")
   fn <- sqrt(rowSums(F0^2)); gn <- sqrt(rowSums(G0^2))
   COS <- (F0 %*% t(G0)) / outer(fn, gn, "*")
   COS[!is.finite(COS)] <- NA_real_
-  dimnames(COS) <- list(rownames(F), rownames(G))
+  dimnames(COS) <- list(rownames(row_coords), rownames(col_coords))
   COS
 }
 
@@ -87,13 +87,13 @@ sonsca_bootstrap <- function(tab, row_anchor, col_anchor,
       if (is.na(sgn) || sgn == 0) sgn <- 1
       Fb[, k] <- sgn * Fb[, k]; Gb[, k] <- sgn * Gb[, k]
     }
-    list(F = Fb, G = Gb)
+    list(row_coords = Fb, col_coords = Gb)
   }
 
   base <- sonsca_coords(tab)
-  K0   <- min(ncol(base$F), ncol(base$G))
-  COS0 <- sonsca_cosines(base$F[, 1:K0, drop = FALSE],
-                          base$G[, 1:K0, drop = FALSE],
+  K0   <- min(ncol(base$row_coords), ncol(base$col_coords))
+  COS0 <- sonsca_cosines(base$row_coords[, 1:K0, drop = FALSE],
+                          base$col_coords[, 1:K0, drop = FALSE],
                           row_anchor, col_anchor)
   t0   <- as.numeric(COS0[row_groups, col_groups, drop = FALSE])
   n    <- sum(tab); p <- as.vector(tab) / n
@@ -108,10 +108,10 @@ sonsca_bootstrap <- function(tab, row_anchor, col_anchor,
     if (!all(rowSums(tb) > 0) || !all(colSums(tb) > 0)) next
     bc <- tryCatch(sonsca_coords(tb), error = function(e) NULL)
     if (is.null(bc)) next
-    if (min(ncol(bc$F), ncol(bc$G)) < K0) next
-    al   <- .align_sign(bc$F, bc$G, base$F, base$G, K0)
+    if (min(ncol(bc$row_coords), ncol(bc$col_coords)) < K0) next
+    al   <- .align_sign(bc$row_coords, bc$col_coords, base$row_coords, base$col_coords, K0)
     COSb <- tryCatch(
-      sonsca_cosines(al$F, al$G, row_anchor, col_anchor),
+      sonsca_cosines(al$row_coords, al$col_coords, row_anchor, col_anchor),
       error = function(e) NULL)
     if (is.null(COSb)) next
     v <- as.numeric(COSb[row_groups, col_groups, drop = FALSE])

@@ -13,8 +13,8 @@ racial groups); columns are ordered categories (e.g., score bins).}
 \value{
 A named list with elements:
 \describe{
-\item{F}{Row standard coordinate matrix (rows = row categories).}
-\item{G}{Column principal coordinate matrix (rows = column categories).}
+\item{row_coords}{Row standard coordinate matrix (rows = row categories).}
+\item{col_coords}{Column principal coordinate matrix (rows = column categories).}
 }
 }
 \description{
